@@ -16,11 +16,14 @@ const Period = () => {
     }, []);
 
     const loadDatesForMonth = async (month: string) => {
+        setDate({}); // Clear previous month’s data before loading new one
+
         try {
             const fileContent = await FileSystem.readAsStringAsync(fileUri);
             const allDates = fileContent ? JSON.parse(fileContent) : {};
-            setDate(allDates[month] || {});
+            setDate(allDates[month] || {}); // Load only the selected month's data
             setCurrentMonth(month);
+            scheduleNotification(allDates); // Schedule notification
         } catch (error) {
             console.log('Failed to load dates:', error);
             setDate({});
@@ -41,7 +44,11 @@ const Period = () => {
 
     const toggleDateSelection = (date: string) => {
         const selectedMonth = date.slice(0, 7);
-        if (selectedMonth !== currentMonth) loadDatesForMonth(selectedMonth);
+
+        if (selectedMonth !== currentMonth) {
+            loadDatesForMonth(selectedMonth);
+            return; // Prevent selection until correct month's data is loaded
+        }
 
         setDate((prevDates) => {
             const updatedDates = { ...prevDates };
@@ -72,6 +79,36 @@ const Period = () => {
         });
     };
 
+    const scheduleNotification = async (allDates: any) => {
+        if (!allDates) return;
+
+        const lastMonth = new Date();
+        lastMonth.setMonth(lastMonth.getMonth() - 1);
+        const lastMonthKey = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}`;
+
+        if (allDates[lastMonthKey]) {
+            const lastDates = Object.keys(allDates[lastMonthKey]).sort();
+            if (lastDates.length > 0) {
+                const lastDay = lastDates[lastDates.length - 1];
+
+                const lastDate = new Date(lastDay);
+                lastDate.setDate(lastDate.getDate() + 28); // 28 days after last period
+
+                const now = new Date();
+                if (lastDate > now) {
+                    await Notifications.scheduleNotificationAsync({
+                        content: {
+                            title: 'Reminder',
+                            body: "It's coming soon! 🩸",
+                            sound: true,
+                        },
+                        trigger: { date: lastDate },
+                    });
+                }
+            }
+        }
+    };
+
     useEffect(() => {
         const today = new Date();
         const initialMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
@@ -89,6 +126,7 @@ const Period = () => {
                     markingType="period"
                     onDayPress={(day: { dateString: string }) => toggleDateSelection(day.dateString)}
                     markedDates={markDate}
+                    onMonthChange={(month) => loadDatesForMonth(`${month.year}-${String(month.month).padStart(2, '0')}`)} // Loads correct data on month change
                 />
             </View>
 
