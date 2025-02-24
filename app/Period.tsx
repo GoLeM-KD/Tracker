@@ -19,7 +19,7 @@ const Period = () => {
         try {
             const fileExists = await FileSystem.getInfoAsync(fileUri);
             if (!fileExists.exists) {
-                await FileSystem.writeAsStringAsync(fileUri, JSON.stringify({})); // ✅ Create an empty file if missing
+                await FileSystem.writeAsStringAsync(fileUri, JSON.stringify({})); //  Create an empty file if missing
             }
 
             const fileContent = await FileSystem.readAsStringAsync(fileUri);
