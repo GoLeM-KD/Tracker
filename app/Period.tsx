@@ -16,14 +16,17 @@ const Period = () => {
     }, []);
 
     const loadDatesForMonth = async (month: string) => {
-        setDate({}); // Clear previous month’s data before loading new one
-
         try {
+            const fileExists = await FileSystem.getInfoAsync(fileUri);
+            if (!fileExists.exists) {
+                await FileSystem.writeAsStringAsync(fileUri, JSON.stringify({})); // ✅ Create an empty file if missing
+            }
+
             const fileContent = await FileSystem.readAsStringAsync(fileUri);
             const allDates = fileContent ? JSON.parse(fileContent) : {};
-            setDate(allDates[month] || {}); // Load only the selected month's data
+            setDate(allDates[month] || {});
             setCurrentMonth(month);
-            scheduleNotification(allDates); // Schedule notification
+            scheduleNotification(allDates);
         } catch (error) {
             console.log('Failed to load dates:', error);
             setDate({});
@@ -33,8 +36,13 @@ const Period = () => {
     const saveDatesForMonth = async (month: string, dates: any) => {
         try {
             let allDates: { [key: string]: any } = {};
-            const fileContent = await FileSystem.readAsStringAsync(fileUri).catch(() => '{}');
-            if (fileContent) allDates = JSON.parse(fileContent);
+            const fileExists = await FileSystem.getInfoAsync(fileUri);
+
+            if (fileExists.exists) {
+                const fileContent = await FileSystem.readAsStringAsync(fileUri);
+                allDates = fileContent ? JSON.parse(fileContent) : {};
+            }
+
             allDates[month] = dates;
             await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(allDates));
         } catch (error) {
@@ -47,7 +55,7 @@ const Period = () => {
 
         if (selectedMonth !== currentMonth) {
             loadDatesForMonth(selectedMonth);
-            return; // Prevent selection until correct month's data is loaded
+            return;
         }
 
         setDate((prevDates) => {
@@ -101,7 +109,7 @@ const Period = () => {
                             title: 'Reminder',
                             body: "It's coming soon! 🩸",
                             sound: true,
-                        },
+                    },
                         trigger: { date: lastDate },
                     });
                 }
@@ -126,7 +134,7 @@ const Period = () => {
                     markingType="period"
                     onDayPress={(day: { dateString: string }) => toggleDateSelection(day.dateString)}
                     markedDates={markDate}
-                    onMonthChange={(month) => loadDatesForMonth(`${month.year}-${String(month.month).padStart(2, '0')}`)} // Loads correct data on month change
+                    onMonthChange={(month) => loadDatesForMonth(`${month.year}-${String(month.month).padStart(2, '0')}`)}
                 />
             </View>
 
@@ -156,7 +164,8 @@ const styles = StyleSheet.create({
     main: {
         display: 'flex',
         height: '100%',
-        width: '100%'
+        width: '100%',
+        backgroundColor: 'white',
     },
     navbar: {
         position: 'relative',
